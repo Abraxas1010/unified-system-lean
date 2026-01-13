@@ -1,4 +1,5 @@
 import HeytingLean.LoF.LoFPrimary.MuxNet
+import Batteries.Data.DList.Basic
 
 namespace HeytingLean
 namespace LoF
@@ -151,9 +152,12 @@ structure CompileState (n : Nat) where
   inputWires : Fin n → WireId  -- maps variables to their input wires
 
 /-- Input-gate prefix for `n` variables, using wires `0,1,...,n-1`. -/
-private def mkInputGates : Nat → List Gate
-  | 0 => []
-  | n + 1 => mkInputGates n ++ [Gate.input n n]
+private def mkInputGates (n : Nat) : List Gate :=
+  (List.range n).map fun i => Gate.input i i
+
+private theorem mkInputGates_succ (n : Nat) :
+    mkInputGates (n + 1) = mkInputGates n ++ [Gate.input n n] := by
+  simp [mkInputGates, List.range_succ, List.map_append]
 
 /-- Create initial state with input wires for all variables. -/
 def initCompileState (n : Nat) : CompileState n :=
@@ -163,14 +167,44 @@ def initCompileState (n : Nat) : CompileState n :=
 
 /-- Pure compilation of a `MuxNet.Net n`, allocating fresh wires from `k` upward.
 Returns `(outWire, nextWire, newGates)`. -/
+private abbrev GateDList := Batteries.DList Gate
+
+@[simp] private theorem GateDList_toList_append (a b : GateDList) :
+    Batteries.DList.toList (a ++ b) = Batteries.DList.toList a ++ Batteries.DList.toList b := by
+  cases a with
+  | mk fa ha =>
+    cases b with
+    | mk fb hb =>
+      -- `DList` carries the invariant `apply l = apply [] ++ l`.
+      -- Apply that invariant to `fa` at `l := fb []`.
+      simp [Batteries.DList.toList, Batteries.DList.append]
+      exact ha (fb [])
+
+@[simp] private theorem GateDList_apply_nil_append (a b : GateDList) :
+    (a ++ b).apply [] = a.apply [] ++ b.apply [] := by
+  -- `toList` is definitionally `apply []`.
+  simpa [Batteries.DList.toList] using (GateDList_toList_append (a := a) (b := b))
+
+@[simp] private theorem GateDList_apply_nil_singleton (g : Gate) :
+    (Batteries.DList.singleton g).apply [] = [g] := by
+  rfl
+
+private def compilePureDList {n : Nat} (inputWires : Fin n → WireId) :
+    MuxNet.Net n → WireId → (WireId × WireId × GateDList)
+  | .const b, k => (k, k + 1, Batteries.DList.singleton (Gate.const k b))
+  | .mux v lo hi, k =>
+      let (loOut, k₁, gLo) := compilePureDList inputWires lo k
+      let (hiOut, k₂, gHi) := compilePureDList inputWires hi k₁
+      let out := k₂
+      let g :=
+        gLo ++ gHi ++ Batteries.DList.singleton (Gate.mux out (inputWires v) loOut hiOut)
+      (out, out + 1, g)
+
 private def compilePure {n : Nat} (inputWires : Fin n → WireId) :
     MuxNet.Net n → WireId → (WireId × WireId × List Gate)
-  | .const b, k => (k, k + 1, [Gate.const k b])
-  | .mux v lo hi, k =>
-      let (loOut, k₁, gLo) := compilePure inputWires lo k
-      let (hiOut, k₂, gHi) := compilePure inputWires hi k₁
-      let out := k₂
-      (out, out + 1, gLo ++ gHi ++ [Gate.mux out (inputWires v) loOut hiOut])
+  | net, k =>
+      let (outWire, nextWire, newGates) := compilePureDList inputWires net k
+      (outWire, nextWire, Batteries.DList.toList newGates)
 
 /-- Compile a `MuxNet.Net n`, appending gates to the current state. -/
 def compileMuxNet {n : Nat} (net : MuxNet.Net n) : StateM (CompileState n) WireId :=
@@ -186,37 +220,48 @@ def toNetlist {n : Nat} (net : MuxNet.Net n) : Netlist :=
 private theorem compilePure_next_eq_out_succ {n : Nat} (inputWires : Fin n → WireId)
     (net : MuxNet.Net n) (k : WireId) :
     (compilePure inputWires net k).2.1 = (compilePure inputWires net k).1 + 1 := by
+  have hDL :
+      (compilePureDList inputWires net k).2.1 = (compilePureDList inputWires net k).1 + 1 := by
+    induction net generalizing k with
+    | const b => simp [compilePureDList]
+    | mux v lo hi ihLo ihHi => simp [compilePureDList, ihLo, ihHi]
+  simpa [compilePure] using hDL
+
+private theorem compilePureDList_out_ge_start {n : Nat} (inputWires : Fin n → WireId)
+    (net : MuxNet.Net n) (k : WireId) :
+    k ≤ (compilePureDList inputWires net k).1 := by
   induction net generalizing k with
-  | const b => simp [compilePure]
+  | const b =>
+      simp [compilePureDList]
   | mux v lo hi ihLo ihHi =>
-      simp [compilePure, ihLo, ihHi]
+      rcases hLo : compilePureDList inputWires lo k with ⟨loOut, k₁, gLo⟩
+      have hk₁ : k ≤ k₁ := by
+        have hloOut : k ≤ loOut := by
+          simpa [hLo] using (ihLo (k := k))
+        have hk₁' : k₁ = loOut + 1 := by
+          have := compilePure_next_eq_out_succ (inputWires := inputWires) (net := lo) (k := k)
+          -- rewrite the wrapper lemma back to the `DList` triple
+          have : (compilePureDList inputWires lo k).2.1 = (compilePureDList inputWires lo k).1 + 1 := by
+            simpa [compilePure] using this
+          simpa [hLo] using this
+        simpa [hk₁'] using Nat.le_trans hloOut (Nat.le_succ loOut)
+      rcases hHi : compilePureDList inputWires hi k₁ with ⟨hiOut, k₂, gHi⟩
+      have h_hiOut : k₁ ≤ hiOut := by
+        simpa [hHi] using (ihHi (k := k₁))
+      have hk₂' : k₂ = hiOut + 1 := by
+        have := compilePure_next_eq_out_succ (inputWires := inputWires) (net := hi) (k := k₁)
+        have : (compilePureDList inputWires hi k₁).2.1 = (compilePureDList inputWires hi k₁).1 + 1 := by
+          simpa [compilePure] using this
+        simpa [hHi] using this
+      have hk₂ : k ≤ k₂ := by
+        have : k ≤ hiOut := Nat.le_trans hk₁ h_hiOut
+        simpa [hk₂'] using Nat.le_trans this (Nat.le_succ hiOut)
+      simpa [compilePureDList, hLo, hHi] using hk₂
 
 private theorem compilePure_out_ge_start {n : Nat} (inputWires : Fin n → WireId)
     (net : MuxNet.Net n) (k : WireId) :
     k ≤ (compilePure inputWires net k).1 := by
-  induction net generalizing k with
-  | const b => simp [compilePure]
-  | mux v lo hi ihLo ihHi =>
-      -- out is the `k₂` returned by compiling `hi`
-      rcases hLo : compilePure inputWires lo k with ⟨loOut, k₁, gLo⟩
-      have hk₁ : k ≤ k₁ := by
-        have hloOut : k ≤ loOut := by
-          simpa [hLo] using (ihLo (k := k))
-        -- k₁ = loOut + 1
-        have hk₁' : k₁ = loOut + 1 := by
-          simpa [hLo] using (compilePure_next_eq_out_succ (inputWires := inputWires) (net := lo) (k := k))
-        simpa [hk₁'] using Nat.le_trans hloOut (Nat.le_succ loOut)
-      rcases hHi : compilePure inputWires hi k₁ with ⟨hiOut, k₂, gHi⟩
-      have h_hiOut : k₁ ≤ hiOut := by
-        simpa [hHi] using (ihHi (k := k₁))
-      have hk₂' : k₂ = hiOut + 1 := by
-        simpa [hHi] using
-          (compilePure_next_eq_out_succ (inputWires := inputWires) (net := hi) (k := k₁))
-      have hk₂ : k ≤ k₂ := by
-        -- k ≤ k₁ ≤ hiOut ≤ hiOut+1 = k₂
-        have : k ≤ hiOut := Nat.le_trans hk₁ h_hiOut
-        simpa [hk₂'] using Nat.le_trans this (Nat.le_succ hiOut)
-      simpa [compilePure, hLo, hHi] using hk₂
+  simpa [compilePure] using (compilePureDList_out_ge_start (inputWires := inputWires) (net := net) (k := k))
 
 private theorem compilePure_outs_ge_start {n : Nat} (inputWires : Fin n → WireId)
     (net : MuxNet.Net n) (k : WireId) :
@@ -224,40 +269,49 @@ private theorem compilePure_outs_ge_start {n : Nat} (inputWires : Fin n → Wire
   induction net generalizing k with
   | const b =>
       intro g hg
-      simp [compilePure] at hg
-      rcases hg with rfl
+      have hg' : g ∈ [Gate.const k b] := by
+        simpa [compilePure, compilePureDList] using hg
+      have hgEq : g = Gate.const k b := by
+        simpa using (List.mem_singleton.1 hg')
+      subst hgEq
       simp [Gate.out]
   | mux v lo hi ihLo ihHi =>
-      rcases hLo : compilePure inputWires lo k with ⟨loOut, k₁, gLo⟩
+      rcases hLo : compilePureDList inputWires lo k with ⟨loOut, k₁, gLo⟩
+      have hLoList : compilePure inputWires lo k = ⟨loOut, k₁, Batteries.DList.toList gLo⟩ := by
+        simp [compilePure, hLo]
       have hk₁ : k ≤ k₁ := by
         have hloOut : k ≤ loOut := by
-          simpa [hLo] using (compilePure_out_ge_start (inputWires := inputWires) (net := lo) (k := k))
+          simpa [hLoList] using
+            (compilePure_out_ge_start (inputWires := inputWires) (net := lo) (k := k))
         have hk₁' : k₁ = loOut + 1 := by
-          simpa [hLo] using
+          simpa [hLoList] using
             (compilePure_next_eq_out_succ (inputWires := inputWires) (net := lo) (k := k))
         simpa [hk₁'] using Nat.le_trans hloOut (Nat.le_succ loOut)
-      rcases hHi : compilePure inputWires hi k₁ with ⟨hiOut, k₂, gHi⟩
+      rcases hHi : compilePureDList inputWires hi k₁ with ⟨hiOut, k₂, gHi⟩
+      have hHiList : compilePure inputWires hi k₁ = ⟨hiOut, k₂, Batteries.DList.toList gHi⟩ := by
+        simp [compilePure, hHi]
       intro g hg
       -- membership splits across `gLo ++ gHi ++ [Gate.mux ...]`
-      simp [compilePure, hLo, hHi] at hg
+      simp [compilePure, compilePureDList, hLo, hHi] at hg
       rcases hg with hg | hg
       ·
           have hg' : g ∈ (compilePure inputWires lo k).2.2 := by
-            simpa [hLo] using hg
+            simpa [hLoList] using hg
           exact ihLo (k := k) g hg'
       · rcases hg with hg | hg
         · have : k₁ ≤ g.out := by
             -- rewrite membership back into the `compilePure` output for `hi`
-            have hg' : g ∈ (compilePure inputWires hi k₁).2.2 := by simpa [hHi] using hg
+            have hg' : g ∈ (compilePure inputWires hi k₁).2.2 := by
+              simpa [hHiList] using hg
             exact ihHi (k := k₁) g hg'
           exact Nat.le_trans hk₁ this
         · rcases hg with rfl
           -- the mux gate's output is `k₂`
           have h_hiOut : k₁ ≤ hiOut := by
-            simpa [hHi] using
+            simpa [hHiList] using
               (compilePure_out_ge_start (inputWires := inputWires) (net := hi) (k := k₁))
           have hk₂' : k₂ = hiOut + 1 := by
-            simpa [hHi] using
+            simpa [hHiList] using
               (compilePure_next_eq_out_succ (inputWires := inputWires) (net := hi) (k := k₁))
           have hk₂ : k ≤ k₂ := by
             have : k ≤ hiOut := Nat.le_trans hk₁ h_hiOut
@@ -277,7 +331,7 @@ private theorem evalGates_mkInputGates {n : Nat} (inputs : Nat → Bool) (i : Na
   induction n generalizing i with
   | zero => cases (Nat.not_lt_zero _ hi)
   | succ n ih =>
-      have hn : mkInputGates (n + 1) = mkInputGates n ++ [Gate.input n n] := by rfl
+      have hn : mkInputGates (n + 1) = mkInputGates n ++ [Gate.input n n] := mkInputGates_succ n
       have hi' : i < n ∨ i = n := Nat.lt_succ_iff_lt_or_eq.mp hi
       cases hi' with
       | inl hlt =>
@@ -305,65 +359,78 @@ private theorem eval_compilePure {n : Nat} (inputWires : Fin n → WireId)
   intro k env0 hEnv hIW
   induction net generalizing k env0 with
   | const b =>
-      simp [compilePure, evalGates, Gate.eval, MuxNet.eval]
+      simp [compilePure, compilePureDList, evalGates, Gate.eval, MuxNet.eval]
   | mux v lo hi ihLo ihHi =>
-      rcases hLo : compilePure inputWires lo k with ⟨loOut, k₁, gLo⟩
+      rcases hLo : compilePureDList inputWires lo k with ⟨loOut, k₁, gLo⟩
+      set gLoL : List Gate := Batteries.DList.toList gLo with hgLoL
+      have hLoList : compilePure inputWires lo k = ⟨loOut, k₁, gLoL⟩ := by
+        simp [compilePure, hLo, hgLoL]
       have hlo :
-          (evalGates inputs gLo env0) loOut = some (MuxNet.eval lo ρ) := by
-        simpa [hLo] using (ihLo (k := k) (env0 := env0) hEnv hIW)
+          (evalGates inputs gLoL env0) loOut = some (MuxNet.eval lo ρ) := by
+        simpa [hLoList] using (ihLo (k := k) (env0 := env0) hEnv hIW)
       -- input wires are below `k`, and `gLo` only writes to wires ≥ `k`
-      have hgeLo : ∀ g ∈ gLo, k ≤ g.out := by
+      have hgeLo : ∀ g ∈ gLoL, k ≤ g.out := by
         intro g hg
         have hg' : g ∈ (compilePure inputWires lo k).2.2 := by
-          simpa [hLo] using hg
+          simpa [hLoList] using hg
         exact compilePure_outs_ge_start (inputWires := inputWires) (net := lo) (k := k) g hg'
-      have hEnv1 : ∀ v : Fin n, (evalGates inputs gLo env0) (inputWires v) = some (ρ v) := by
+      have hEnv1 : ∀ v : Fin n, (evalGates inputs gLoL env0) (inputWires v) = some (ρ v) := by
         intro v
-        have hpres := evalGates_preserve_lt (inputs := inputs) (gs := gLo) (env := env0)
+        have hpres := evalGates_preserve_lt (inputs := inputs) (gs := gLoL) (env := env0)
           (k := k) (w := inputWires v) (hw := hIW v) hgeLo
         simpa [hpres] using (hEnv v)
       -- `k₁` is the next fresh wire after compiling `lo`
       have hk₁ : k ≤ k₁ := by
         have hloOut : k ≤ loOut := by
-          simpa [hLo] using (compilePure_out_ge_start (inputWires := inputWires) (net := lo) (k := k))
+          simpa [hLoList] using
+            (compilePure_out_ge_start (inputWires := inputWires) (net := lo) (k := k))
         have hk₁' : k₁ = loOut + 1 := by
-          simpa [hLo] using
+          simpa [hLoList] using
             (compilePure_next_eq_out_succ (inputWires := inputWires) (net := lo) (k := k))
         simpa [hk₁'] using Nat.le_trans hloOut (Nat.le_succ loOut)
       have hIW' : ∀ v : Fin n, inputWires v < k₁ := fun v => lt_of_lt_of_le (hIW v) hk₁
-      rcases hHi : compilePure inputWires hi k₁ with ⟨hiOut, k₂, gHi⟩
+      rcases hHi : compilePureDList inputWires hi k₁ with ⟨hiOut, k₂, gHi⟩
+      set gHiL : List Gate := Batteries.DList.toList gHi with hgHiL
+      have hHiList : compilePure inputWires hi k₁ = ⟨hiOut, k₂, gHiL⟩ := by
+        simp [compilePure, hHi, hgHiL]
+      have hMux :
+          compilePure inputWires (.mux v lo hi) k =
+            ⟨k₂, k₂ + 1, gLoL ++ (gHiL ++ [Gate.mux k₂ (inputWires v) loOut hiOut])⟩ := by
+        -- Expand through the `DList` compiler and convert back to the concrete list form.
+        simp [compilePure, compilePureDList, hLo, hHi, hgLoL, hgHiL, List.append_assoc]
       -- Reduce the goal for this mux node to the concrete generated gate list.
-      simp [compilePure, hLo, hHi]
+      simp [hMux, MuxNet.eval]
       have hhi :
-          (evalGates inputs gHi (evalGates inputs gLo env0)) hiOut = some (MuxNet.eval hi ρ) := by
-        simpa [hHi] using (ihHi (k := k₁) (env0 := evalGates inputs gLo env0) hEnv1 hIW')
+          (evalGates inputs gHiL (evalGates inputs gLoL env0)) hiOut = some (MuxNet.eval hi ρ) := by
+        simpa [hHiList] using
+          (ihHi (k := k₁) (env0 := evalGates inputs gLoL env0) hEnv1 hIW')
       -- `gHi` writes only to wires ≥ `k₁`, so it preserves `loOut < k₁`
       have hloOut_lt : loOut < k₁ := by
         have hk₁' : k₁ = loOut + 1 := by
-          simpa [hLo] using
+          simpa [hLoList] using
             (compilePure_next_eq_out_succ (inputWires := inputWires) (net := lo) (k := k))
         simp [hk₁']
-      have hgeHi : ∀ g ∈ gHi, k₁ ≤ g.out := by
+      have hgeHi : ∀ g ∈ gHiL, k₁ ≤ g.out := by
         intro g hg
         have hg' : g ∈ (compilePure inputWires hi k₁).2.2 := by
-          simpa [hHi] using hg
+          simpa [hHiList] using hg
         exact compilePure_outs_ge_start (inputWires := inputWires) (net := hi) (k := k₁) g hg'
       have hlo_pres :
-          (evalGates inputs gHi (evalGates inputs gLo env0)) loOut =
-            (evalGates inputs gLo env0) loOut := by
-        have hpres := evalGates_preserve_lt (inputs := inputs) (gs := gHi)
-          (env := evalGates inputs gLo env0) (k := k₁) (w := loOut) hloOut_lt hgeHi
+          (evalGates inputs gHiL (evalGates inputs gLoL env0)) loOut =
+            (evalGates inputs gLoL env0) loOut := by
+        have hpres := evalGates_preserve_lt (inputs := inputs) (gs := gHiL)
+          (env := evalGates inputs gLoL env0) (k := k₁) (w := loOut) hloOut_lt hgeHi
         simpa using hpres
       -- evaluate the final mux gate
       have hSel :
-          (evalGates inputs gHi (evalGates inputs gLo env0)) (inputWires v) = some (ρ v) := by
+          (evalGates inputs gHiL (evalGates inputs gLoL env0)) (inputWires v) = some (ρ v) := by
         -- `inputWires v < k ≤ k₁` so also < k₁, hence preserved by `gHi`
         have hvlt : inputWires v < k₁ := lt_of_lt_of_le (hIW v) hk₁
-        have hpres := evalGates_preserve_lt (inputs := inputs) (gs := gHi)
-          (env := evalGates inputs gLo env0) (k := k₁) (w := inputWires v) hvlt hgeHi
+        have hpres := evalGates_preserve_lt (inputs := inputs) (gs := gHiL)
+          (env := evalGates inputs gLoL env0) (k := k₁) (w := inputWires v) hvlt hgeHi
         simpa [hpres] using hEnv1 v
       -- Split evaluation over concatenation and finish by cases on `ρ v`.
-      let env2 : WireEnv := evalGates inputs gHi (evalGates inputs gLo env0)
+      let env2 : WireEnv := evalGates inputs gHiL (evalGates inputs gLoL env0)
       -- apply the split and compute on the output wire `k₂`
       have hlo2 : env2 loOut = some (MuxNet.eval lo ρ) := by
         simpa [env2, hlo_pres] using hlo
@@ -371,7 +438,7 @@ private theorem eval_compilePure {n : Nat} (inputWires : Fin n → WireId)
         simpa using hhi
       -- final step
       have hSplit :
-          evalGates inputs (gLo ++ (gHi ++ [Gate.mux k₂ (inputWires v) loOut hiOut])) env0 k₂ =
+          evalGates inputs (gLoL ++ (gHiL ++ [Gate.mux k₂ (inputWires v) loOut hiOut])) env0 k₂ =
             evalGates inputs [Gate.mux k₂ (inputWires v) loOut hiOut] env2 k₂ := by
         simp [env2, evalGates_append]
       cases hv : ρ v <;>

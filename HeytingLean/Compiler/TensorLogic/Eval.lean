@@ -7,16 +7,26 @@ namespace TensorLogic
 
 open Std
 
-abbrev Subst := List (String × String)
+/-!
+## Notes on semantics + determinism
+
+* `Mode.f2` uses XOR as “or” (addition mod 2). For recursive programs, the immediate-consequence
+  operator is not monotone in the usual lattice order, so naive Kleene iteration is a heuristic
+  and may oscillate rather than converge.
+* We keep runtime results reproducible by avoiding reliance on `HashMap` iteration order in core
+  evaluation paths (sorting facts before indexing and ordering joins by selectivity).
+-/
+
+abbrev Subst := Std.HashMap String String
 
 namespace Subst
 
 def lookup (s : Subst) (v : String) : Option String :=
-  (s.find? (fun kv => kv.1 = v)).map (·.2)
+  s.get? v
 
 def bindVar (s : Subst) (v : String) (c : String) : Option Subst :=
   match lookup s v with
-  | none => some ((v, c) :: s)
+  | none => some (s.insert v c)
   | some c' => if c' = c then some s else none
 
 end Subst
@@ -105,14 +115,39 @@ def addOr (ops : Ops) (F : Facts) (a : Atom) (w : Float) : Facts :=
 def fromList (ops : Ops) (xs : List (Atom × Float)) : Facts :=
   xs.foldl (fun acc (p : Atom × Float) => addOr ops acc p.1 p.2) empty
 
-def indexByPred (F : Facts) : HashMap String (List (Atom × Float)) :=
-  F.fold (init := ({} : HashMap String (List (Atom × Float))))
-    (fun acc atom w =>
+private def lexLt (a b : List String) : Bool :=
+  match a, b with
+  | [], [] => false
+  | [], _ => true
+  | _, [] => false
+  | x :: xs, y :: ys =>
+      if x < y then true
+      else if x = y then lexLt xs ys
+      else false
+
+private def atomLt (a b : Atom) : Bool :=
+  if a.pred < b.pred then true
+  else if a.pred = b.pred then lexLt a.args b.args
+  else false
+
+def toList (F : Facts) : List (Atom × Float) :=
+  F.fold (init := []) (fun acc atom w => (atom, w) :: acc)
+
+def toListSorted (F : Facts) : List (Atom × Float) :=
+  let arr := (toList F).toArray.qsort (fun aw bw => atomLt aw.1 bw.1)
+  arr.toList
+
+def indexByPred (F : Facts) : HashMap String (Array (Atom × Float)) :=
+  (toListSorted F).foldl
+    (fun acc (aw : Atom × Float) =>
+      let atom := aw.1
+      let w := aw.2
       if w == 0.0 then
         acc
       else
-      let bucket := acc.getD atom.pred []
-      acc.insert atom.pred ((atom, w) :: bucket))
+        let bucket := acc.getD atom.pred (#[] : Array (Atom × Float))
+        acc.insert atom.pred (bucket.push (atom, w)))
+    ({} : HashMap String (Array (Atom × Float)))
 
 def maxDelta (A B : Facts) : Float :=
   let step (acc : Float) (atom : Atom) (wA : Float) : Float :=
@@ -138,7 +173,7 @@ private def unifyArgs (s : Subst) : List Sym → List String → Option Subst
       unifyArgs s' ps cs
   | _, _ => none
 
-def unify (pat : AtomPat) (atom : Atom) (s : Subst := []) : Option Subst := do
+def unify (pat : AtomPat) (atom : Atom) (s : Subst := {}) : Option Subst := do
   if pat.pred != atom.pred then
     none
   else if pat.arity != atom.arity then
@@ -154,24 +189,30 @@ def instantiate (pat : AtomPat) (s : Subst) : Option Atom := do
   let args ← pat.args.mapM (instantiateArg s)
   pure { pred := pat.pred, args := args }
 
-private def extendMatches (ops : Ops) (facts : List (Atom × Float)) (lit : AtomPat)
-    (acc : List (Subst × Float)) : List (Subst × Float) :=
-  acc.flatMap (fun (m : Subst × Float) =>
-    facts.filterMap (fun (fw : Atom × Float) =>
-      match unify lit fw.1 m.1 with
-      | none => none
+private def extendMatches (ops : Ops) (facts : Array (Atom × Float)) (lit : AtomPat)
+    (acc : Array (Subst × Float)) : Array (Subst × Float) := Id.run do
+  let mut out : Array (Subst × Float) := #[]
+  for (s, w0) in acc do
+    for (a, w1) in facts do
+      match unify lit a s with
+      | none => continue
       | some s' =>
-          let w := ops.and m.2 fw.2
-          if w == 0.0 then none else some (s', w)))
+          let w := ops.and w0 w1
+          if w == 0.0 then
+            continue
+          out := out.push (s', w)
+  return out
 
 private def evalBody
     (ops : Ops)
-    (idx : HashMap String (List (Atom × Float)))
+    (idx : HashMap String (Array (Atom × Float)))
     (body : List AtomPat) :
-    List (Subst × Float) :=
-  body.foldl
-    (fun acc lit => extendMatches ops (idx.getD lit.pred []) lit acc)
-    [([], 1.0)]
+    Array (Subst × Float) :=
+  let bodySorted : List AtomPat :=
+    body.toArray.qsort (fun a b => (idx.getD a.pred #[]).size < (idx.getD b.pred #[]).size) |>.toList
+  bodySorted.foldl
+    (fun acc lit => extendMatches ops (idx.getD lit.pred #[]) lit acc)
+    #[({}, 1.0)]
 
 structure RunConfig where
   mode : Mode := .boolean
@@ -185,7 +226,7 @@ structure RunResult where
   delta : Float
   converged : Bool
 
-private def applyRule (ops : Ops) (idx : HashMap String (List (Atom × Float))) (r : Rule)
+private def applyRule (ops : Ops) (idx : HashMap String (Array (Atom × Float))) (r : Rule)
     (F : Facts) : Facts :=
   let ms := evalBody ops idx r.body
   ms.foldl

@@ -1,5 +1,3 @@
-import HeytingLean.LoF.HoTT.Identity
-
 /-
 Minimal SKY combinator layer and rewrite system.
 
