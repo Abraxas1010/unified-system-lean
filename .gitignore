@@ -1,0 +1,18 @@
+# Lake build artifacts
+.lake/
+lake-packages/
+build/
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Generated files (keep data files)
+*.olean

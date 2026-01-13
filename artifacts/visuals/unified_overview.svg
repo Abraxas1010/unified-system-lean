@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0b0f14"/>
+      <stop offset="100%" style="stop-color:#1a1f2e"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="500" fill="url(#bg)"/>
+
+  <!-- Title -->
+  <text x="400" y="40" fill="#e6eef7" font-family="system-ui, sans-serif" font-size="24" text-anchor="middle" font-weight="bold">Unified System Architecture</text>
+  <text x="400" y="65" fill="#b8c7d9" font-family="system-ui, sans-serif" font-size="12" text-anchor="middle">6-Layer Stack with Nucleus as Universal Connector</text>
+
+  <!-- Semantic Layer (top) -->
+  <rect x="200" y="90" width="400" height="60" rx="8" fill="#6c5ce7" fill-opacity="0.2" stroke="#6c5ce7" stroke-width="2"/>
+  <text x="400" y="115" fill="#6c5ce7" font-family="system-ui, sans-serif" font-size="14" text-anchor="middle" font-weight="bold">SEMANTIC LAYER</text>
+  <text x="400" y="135" fill="#e6eef7" font-family="system-ui, sans-serif" font-size="11" text-anchor="middle">Nucleus → Frame → HeytingAlgebra</text>
+
+  <!-- Arrow down -->
+  <path d="M400 150 L400 170 M395 165 L400 170 L405 165" stroke="#8ab4f8" stroke-width="2" fill="none"/>
+
+  <!-- Middle layer boxes -->
+  <!-- LoF Kernel -->
+  <rect x="50" y="180" width="200" height="80" rx="8" fill="#a29bfe" fill-opacity="0.2" stroke="#a29bfe" stroke-width="2"/>
+  <text x="150" y="205" fill="#a29bfe" font-family="system-ui, sans-serif" font-size="12" text-anchor="middle" font-weight="bold">LOF KERNEL</text>
+  <text x="150" y="225" fill="#e6eef7" font-family="system-ui, sans-serif" font-size="10" text-anchor="middle">Expr → BDD → MuxNet</text>
+  <text x="150" y="245" fill="#e6eef7" font-family="system-ui, sans-serif" font-size="10" text-anchor="middle">→ Gates → AIG</text>
+
+  <!-- SKY Combinator -->
+  <rect x="300" y="180" width="200" height="80" rx="8" fill="#fd79a8" fill-opacity="0.2" stroke="#fd79a8" stroke-width="2"/>
+  <text x="400" y="205" fill="#fd79a8" font-family="system-ui, sans-serif" font-size="12" text-anchor="middle" font-weight="bold">SKY COMBINATOR</text>
+  <text x="400" y="225" fill="#e6eef7" font-family="system-ui, sans-serif" font-size="10" text-anchor="middle">K, S, Y + Multiway</text>
+  <text x="400" y="245" fill="#e6eef7" font-family="system-ui, sans-serif" font-size="10" text-anchor="middle">+ Topos/Sieves</text>
+
+  <!-- TensorLogic -->
+  <rect x="550" y="180" width="200" height="80" rx="8" fill="#00b894" fill-opacity="0.2" stroke="#00b894" stroke-width="2"/>
+  <text x="650" y="205" fill="#00b894" font-family="system-ui, sans-serif" font-size="12" text-anchor="middle" font-weight="bold">KNOWLEDGE LAYER</text>
+  <text x="650" y="225" fill="#e6eef7" font-family="system-ui, sans-serif" font-size="10" text-anchor="middle">TensorLogic</text>
+  <text x="650" y="245" fill="#e6eef7" font-family="system-ui, sans-serif" font-size="10" text-anchor="middle">4 inference modes</text>
+
+  <!-- Bridge layer -->
+  <rect x="200" y="290" width="400" height="50" rx="8" fill="#e17055" fill-opacity="0.2" stroke="#e17055" stroke-width="2"/>
+  <text x="400" y="320" fill="#e17055" font-family="system-ui, sans-serif" font-size="12" text-anchor="middle" font-weight="bold">BRIDGE MODULES</text>
+
+  <!-- Arrows to bridge -->
+  <path d="M150 260 L150 290" stroke="#b8c7d9" stroke-width="1.5" fill="none" stroke-dasharray="4"/>
+  <path d="M400 260 L400 290" stroke="#b8c7d9" stroke-width="1.5" fill="none" stroke-dasharray="4"/>
+  <path d="M650 260 L650 290" stroke="#b8c7d9" stroke-width="1.5" fill="none" stroke-dasharray="4"/>
+
+  <!-- Arrow down from bridge -->
+  <path d="M400 340 L400 360 M395 355 L400 360 L405 355" stroke="#8ab4f8" stroke-width="2" fill="none"/>
+
+  <!-- Compilation layer -->
+  <rect x="250" y="370" width="300" height="50" rx="8" fill="#0984e3" fill-opacity="0.2" stroke="#0984e3" stroke-width="2"/>
+  <text x="400" y="395" fill="#0984e3" font-family="system-ui, sans-serif" font-size="12" text-anchor="middle" font-weight="bold">COMPILATION</text>
+  <text x="400" y="410" fill="#e6eef7" font-family="system-ui, sans-serif" font-size="10" text-anchor="middle">LambdaIR → MiniC → C</text>
+
+  <!-- Nucleus callout -->
+  <circle cx="700" y="120" r="40" fill="#f39c12" fill-opacity="0.15" stroke="#f39c12" stroke-width="2"/>
+  <text x="700" y="115" fill="#f39c12" font-family="system-ui, sans-serif" font-size="11" text-anchor="middle" font-weight="bold">NUCLEUS</text>
+  <text x="700" y="130" fill="#e6eef7" font-family="system-ui, sans-serif" font-size="9" text-anchor="middle">Universal</text>
+  <text x="700" y="142" fill="#e6eef7" font-family="system-ui, sans-serif" font-size="9" text-anchor="middle">Connector</text>
+
+  <!-- Dashed lines from nucleus -->
+  <path d="M660 120 L600 120" stroke="#f39c12" stroke-width="1" fill="none" stroke-dasharray="3"/>
+  <path d="M700 160 L400 180" stroke="#f39c12" stroke-width="1" fill="none" stroke-dasharray="3"/>
+
+  <!-- Footer -->
+  <text x="400" y="470" fill="#636e72" font-family="system-ui, sans-serif" font-size="10" text-anchor="middle">Part of the HeytingLean formal verification project</text>
+  <text x="400" y="485" fill="#8ab4f8" font-family="system-ui, sans-serif" font-size="10" text-anchor="middle">https://apoth3osis.io</text>
+</svg>

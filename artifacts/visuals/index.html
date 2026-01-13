@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unified System — Visualization Index</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background: #0b0f14;
+      color: #e6eef7;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+      line-height: 1.6;
+    }
+    h1 { color: #8ab4f8; margin-bottom: 0.5rem; }
+    h2 { color: #a29bfe; margin-top: 2rem; }
+    .subtitle { color: #b8c7d9; margin-bottom: 2rem; }
+    a { color: #8ab4f8; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .card {
+      background: rgba(15,23,33,0.92);
+      border: 1px solid #1c2a3a;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin: 1rem 0;
+    }
+    .card h3 { margin: 0 0 0.5rem; color: #e6eef7; }
+    .card p { margin: 0.5rem 0; color: #b8c7d9; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    .stats { font-family: monospace; color: #00b894; }
+  </style>
+</head>
+<body>
+  <h1>Unified System Visualizations</h1>
+  <p class="subtitle">Interactive proof maps and architecture diagrams</p>
+
+  <h2>Proof Maps</h2>
+  <p>Explore the declaration structure in 2D and 3D. Each node is a theorem, lemma, or definition. Edges connect semantically similar declarations.</p>
+
+  <div class="grid">
+    <div class="card">
+      <h3><a href="./unified_2d.html">2D Proof Map</a></h3>
+      <p>Pan, zoom, and search through 286 declarations.</p>
+      <p class="stats">286 nodes &middot; 681 edges</p>
+    </div>
+    <div class="card">
+      <h3><a href="./unified_3d.html">3D Proof Map</a></h3>
+      <p>Rotate and explore clusters in three dimensions.</p>
+      <p class="stats">Three.js &middot; WebGL</p>
+    </div>
+  </div>
+
+  <h2>Color Legend</h2>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#6c5ce7"></div> LoF (Semantic)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a29bfe"></div> LoFKernel (Gates)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#fd79a8"></div> Combinator (SKY)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f39c12"></div> Topos (Sieves)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#00b894"></div> TensorLogic</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#e17055"></div> Bridge</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#0984e3"></div> CLI</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#636e72"></div> Test</div>
+  </div>
+
+  <h2>Architecture</h2>
+  <div class="card">
+    <h3>6-Layer Stack</h3>
+    <p>The unified system connects four repositories through the <strong>nucleus</strong> as the universal algebraic structure:</p>
+    <ol>
+      <li><strong>Semantic Layer</strong>: PrimaryAlgebra (Frame), Nucleus, Reentry, BoundaryHeyting</li>
+      <li><strong>LoF Kernel</strong>: Expr → BDD → MuxNet → GateSpec → AIG</li>
+      <li><strong>SKY Combinators</strong>: K/S/Y reductions, bracket abstraction, multiway</li>
+      <li><strong>Topos Layer</strong>: Sieves, Grothendieck topology, J.close nucleus</li>
+      <li><strong>Compilation</strong>: LambdaIR → MiniC → C</li>
+      <li><strong>Knowledge Layer</strong>: TensorLogic (boolean/f2/fuzzy/heyting modes)</li>
+    </ol>
+  </div>
+
+  <h2>Data</h2>
+  <div class="card">
+    <h3><a href="./unified_proofs_data.json">unified_proofs_data.json</a></h3>
+    <p>Raw declaration data with positions and edges (JSON format).</p>
+  </div>
+
+  <hr style="border-color: #1c2a3a; margin: 2rem 0;">
+  <p class="subtitle">
+    Part of the <a href="https://apoth3osis.io">HeytingLean</a> formal verification project.
+  </p>
+</body>
+</html>

@@ -1,0 +1,3 @@
+# TensorLogic facts (TSV): pred<TAB>arg1<TAB>arg2[<TAB>weight]
+edge	a	b	1.0
+edge	b	c	1.0

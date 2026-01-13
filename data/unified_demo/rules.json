@@ -1,0 +1,19 @@
+{
+  "rules": [
+    {
+      "head": "reachable",
+      "args": ["X", "Y"],
+      "body": [
+        { "pred": "edge", "args": ["X", "Y"] }
+      ]
+    },
+    {
+      "head": "reachable",
+      "args": ["X", "Z"],
+      "body": [
+        { "pred": "edge", "args": ["X", "Y"] },
+        { "pred": "reachable", "args": ["Y", "Z"] }
+      ]
+    }
+  ]
+}
