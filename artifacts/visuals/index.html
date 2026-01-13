@@ -51,6 +51,14 @@
       border-radius: 50%;
     }
     .stats { font-family: monospace; color: #00b894; }
+    .thumbnail {
+      width: 100%;
+      height: 160px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      border: 1px solid #1c2a3a;
+    }
   </style>
 </head>
 <body>
@@ -62,11 +70,17 @@
 
   <div class="grid">
     <div class="card">
+      <a href="./unified_2d.html">
+        <img src="./unified_2d_preview.svg" alt="2D Proof Map Preview" class="thumbnail">
+      </a>
       <h3><a href="./unified_2d.html">2D Proof Map</a></h3>
       <p>Pan, zoom, and search through 286 declarations.</p>
       <p class="stats">286 nodes &middot; 681 edges</p>
     </div>
     <div class="card">
+      <a href="./unified_3d.html">
+        <img src="./unified_3d_preview.svg" alt="3D Proof Map Preview" class="thumbnail">
+      </a>
       <h3><a href="./unified_3d.html">3D Proof Map</a></h3>
       <p>Rotate and explore clusters in three dimensions.</p>
       <p class="stats">Three.js &middot; WebGL</p>
