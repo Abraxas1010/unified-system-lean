@@ -29,7 +29,7 @@ This repository unifies four previously separate formalizations into a single co
 | **SKY Combinator** | sky-combinator-multiway-lean | K/S/Y reductions, multiway exploration, branchial graphs |
 | **Topos** | sky-combinator-multiway-lean | Sieves, Grothendieck topology, J.close as nucleus |
 | **Compilation** | lean-kernel-sky | LambdaIR → MiniC → C verified pipeline |
-| **Knowledge** | tensor-logic-homology-lean | Datalog inference with 4 modes, homology encoding |
+| **Knowledge** | tensor-logic-homology-lean | Datalog inference with 4 modes, exact F₂ solver, homology encoding |
 
 The unification centers on the **nucleus** as the universal algebraic structure connecting all layers.
 
@@ -165,6 +165,12 @@ HeytingLean/
 ├── Compiler/TensorLogic/       # Knowledge layer
 │   ├── AST.lean                # Atom, Rule, Program
 │   ├── Eval.lean               # 4 modes: boolean, f2, fuzzy, heyting
+│   ├── Bot.lean                # Bot interface (legacy, monotone, f2solve, etc.)
+│   ├── Bots/                   # Solver implementations
+│   │   ├── F2Solve.lean        # Exact finite solver for XOR mode
+│   │   ├── F2Linear.lean       # Linear algebra approach
+│   │   ├── Monotone.lean       # Kleene iteration
+│   │   └── Fuzzy.lean          # Fuzzy logic mode
 │   └── HomologyEncoding.lean   # ChainComplexF2 → LogicProgram
 ├── CLI/
 │   └── UnifiedDemo.lean        # End-to-end demo executable

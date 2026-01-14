@@ -219,6 +219,8 @@ structure RunConfig where
   tnorm : TNorm := .product
   maxIter : Nat := 50
   eps : Float := 1e-6
+  /-- Safety cap for solvers that reduce `Mode.f2` to finite search (e.g. `f2solve`). -/
+  maxAtoms : Nat := 20
 
 structure RunResult where
   facts : Facts
