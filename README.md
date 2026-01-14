@@ -62,6 +62,24 @@ lake exe unified_demo --rules data/unified_demo/rules.json --facts data/unified_
 | `toLambdaIR_correct` | `LeanCoreV2/ToLambdaIR.lean:135` | Compilation preserves semantics |
 | `toLogicProgram_preserves_homology` | `TensorLogic/HomologyEncoding.lean:187` | Boundary data preserved |
 | `eulerBoundary_isLeast` | `LoF/Nucleus.lean` | Minimal fixed point characterization |
+| `demo_monotone_derives_expected` | `TensorLogic/Demo/Proof.lean` | Certified reachability derivation |
+
+## TensorLogic Demo
+
+Run the certified demo with deterministic output:
+
+```bash
+lake exe tensorlogic_demo -- --deterministic true
+```
+
+**Reproducibility Contract:**
+- `bundle_hash` is SHA-256 of canonical JSON bytes (with `bundle_hash` field omitted)
+- Timestamps omitted, fact ordering normalized, weights canonicalized as Q16.16 integers
+- Certified theorem: `demo_monotone_derives_expected` (no sorry/admit)
+
+**Testing:**
+- Selftest (determinism + F₂ divergence): `lake exe tensorlogic_demo_selftest`
+- Faulttest (CLI robustness): `lake exe tensorlogic_demo_faulttest`
 
 ## Architecture
 

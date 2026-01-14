@@ -108,6 +108,11 @@ private def writeFile (path : System.FilePath) (contents : String) : IO Unit := 
   IO.FS.createDirAll parent
   IO.FS.writeFile path contents
 
+private def ensureOutPathIsFile (path : System.FilePath) : IO Unit := do
+  if (← path.pathExists) then
+    if (← path.isDir) then
+      throw <| IO.userError "out_path_is_directory"
+
 private def mkInitFacts (mode : Mode) (tnorm : TNorm) (xs : List (Atom × Float)) : Facts :=
   let ops := Ops.forConfig mode tnorm
   match mode with
@@ -233,6 +238,7 @@ def main (argvRaw : List String) : IO UInt32 := do
         IO.println payload
     | some p =>
         let out ← resolveOutPath p
+        ensureOutPathIsFile out
         writeFile out (payload ++ "\n")
         IO.println s!"[tensorlogic_demo] wrote {out}"
 
