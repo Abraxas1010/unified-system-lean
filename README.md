@@ -81,6 +81,11 @@ lake exe tensorlogic_demo -- --deterministic true
 - Selftest (determinism + F₂ divergence): `lake exe tensorlogic_demo_selftest`
 - Faulttest (CLI robustness): `lake exe tensorlogic_demo_faulttest`
 
+**Harness (multi-demo runner):**
+- `lake exe tensorlogic_harness -- --demo reachability --out evidence.json`
+- `lake exe tensorlogic_harness_selftest` (determinism check)
+- `lake exe tensorlogic_harness_faulttest` (fault injection suite)
+
 ## Architecture
 
 ```
@@ -194,6 +199,18 @@ HeytingLean/
 │   │   ├── Schema.lean         # Canonical JSON + Q16 weights
 │   │   ├── Main.lean           # Demo runner executable
 │   │   └── Proof.lean          # Certified theorem (no sorry)
+│   ├── Demos/                  # Multi-demo registry
+│   │   ├── Registry.lean       # Demo registration
+│   │   ├── Reachability.lean   # Graph reachability demo
+│   │   ├── ParityF2.lean       # F₂ parity demo
+│   │   └── ContractsPolicy.lean # Policy demo + proof
+│   ├── Harness/                # Multi-demo harness
+│   │   ├── Core.lean           # Shared types
+│   │   └── Main.lean           # Harness runner
+│   ├── Evidence/               # Evidence bundle format
+│   │   ├── BundleV2.lean       # V2 bundle structure
+│   │   ├── Canonical.lean      # Canonical serialization
+│   │   └── CanonicalProofs.lean # Canonicalization proofs
 │   └── HomologyEncoding.lean   # ChainComplexF2 → LogicProgram
 ├── CLI/
 │   └── UnifiedDemo.lean        # End-to-end demo executable
