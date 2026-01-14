@@ -171,6 +171,11 @@ HeytingLean/
 │   │   ├── F2Linear.lean       # Linear algebra approach
 │   │   ├── Monotone.lean       # Kleene iteration
 │   │   └── Fuzzy.lean          # Fuzzy logic mode
+│   ├── Demo/                   # Certified demo with evidence bundle
+│   │   ├── Program.lean        # Demo Datalog program
+│   │   ├── Schema.lean         # Canonical JSON + Q16 weights
+│   │   ├── Main.lean           # Demo runner executable
+│   │   └── Proof.lean          # Certified theorem (no sorry)
 │   └── HomologyEncoding.lean   # ChainComplexF2 → LogicProgram
 ├── CLI/
 │   └── UnifiedDemo.lean        # End-to-end demo executable
